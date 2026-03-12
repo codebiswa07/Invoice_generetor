@@ -203,8 +203,10 @@
             </div>
             <div class="invoice-label">
                 <h2>TAX INVOICE</h2>
-                <p>Invoice No: #01</p>
-                <p>Date: <span id="display-date"></span></p>
+                <div>
+                    Invoice No: <span id="invNo" style="border-bottom: 1px dashed #3a6ea5; cursor: pointer;" contenteditable="true">01</span> <br>
+                    Date: <span id="date" style="border-bottom: 1px dashed #3a6ea5; cursor: pointer;" contenteditable="true"></span>
+                </div>
             </div>
         </div>
 
@@ -236,7 +238,7 @@
                     <th width="120px" class="text-right">Total</th>
                 </tr>
             </thead>
-            <tbody id="item-table-body">
+            <tbody id="item-table-body" contenteditable="true">
                 </tbody>
         </table>
 
@@ -416,3 +418,4 @@
 </body>
 
 </html>
+
