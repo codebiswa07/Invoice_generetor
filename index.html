@@ -97,6 +97,9 @@
 
         .btn-secondary { background: #666; margin-top: 5px; }
         .btn-download { background: #28a745; margin-top: 5px; }
+        .saved-invoices { margin-top: 20px; }
+        .saved-invoices select { width: 100%; padding: 12px; font-size: 16px; }
+        #storageStatus { min-height: 1.4em; font-size: 14px; }
 
         @media print { 
             .controls { display: none; } 
@@ -136,7 +139,7 @@
             </tr>
             <tr>
                 <td colspan="4" style="height: 90px;">
-                    <div contenteditable="true" style="outline:none;">
+                    <div contenteditable="true" id="customerDetails" style="outline:none;">
                         <b>M/S MANIPAL HOSPITALS (EAST) INDIA PRIVATE LIMITED</b><br>
                         Address: Plot No.1, Beside Satya Sai Enclave, Khandagiri, Bhubaneswar-751030, Odisha<br>
                         Mob: 91 7666000348<br>
@@ -217,122 +220,29 @@
 </div>
 
 <div class="controls">
+    <div class="saved-invoices">
+        <label for="savedInvoices"><strong>Saved invoices</strong></label>
+        <select id="savedInvoices" disabled>
+            <option value="">Configure Firestore to load saved invoices</option>
+        </select>
+        <button class="btn-main" id="saveInvoice" type="button" disabled>Save New Invoice</button>
+        <button class="btn-main btn-secondary" id="updateInvoice" type="button" disabled>Update Selected Invoice</button>
+        <button class="btn-main btn-secondary" id="deleteInvoice" type="button" disabled>Delete Selected Invoice</button>
+        <p id="storageStatus" role="status" aria-live="polite">Firestore is not configured.</p>
+    </div>
     <div class="control-group">
         <input type="text" id="pName" placeholder="Product Name">
         <input type="text" id="pSerial" placeholder="Serial No">
         <input type="number" id="pQty" placeholder="Qty">
         <input type="number" id="pRate" placeholder="Rate">
     </div>
-    <button class="btn-main" onclick="addRow()">Add Item</button>
-    <button class="btn-main btn-secondary" onclick="clearSignature()">Clear Signature</button>
+    <button class="btn-main" id="addItem" type="button">Add Item</button>
+    <button class="btn-main btn-secondary" id="clearSignature" type="button">Clear Signature</button>
     <button class="btn-main btn-download" onclick="window.print()">Export PDF</button>
     <a href="estimate.html"><button>Create Estimate</button></a>
 </div>
 
-<script>
-    let subtotal = 0;
-    let totalQty = 0;
-    document.getElementById("invDate").innerText = new Date().toLocaleDateString('en-GB');
-
-    function addRow() {
-        const name = document.getElementById("pName").value;
-        const serial = document.getElementById("pSerial").value || '-';
-        const qty = parseInt(document.getElementById("pQty").value);
-        const rate = parseFloat(document.getElementById("pRate").value);
-
-        if(!name || isNaN(qty) || isNaN(rate)) return alert("Please enter Product, Qty and Rate");
-
-        const total = qty * rate;
-        const tbody = document.getElementById("tableBody");
-        const rowCount = tbody.rows.length + 1;
-
-        const row = `<tr>
-            <td class="center-text">${rowCount}</td>
-            <td>${name}</td>
-            <td class="center-text">${serial}</td>
-            <td class="center-text">${qty}</td>
-            <td class="right-text">${rate.toFixed(2)}</td>
-            <td class="right-text">${total.toFixed(2)}</td>
-        </tr>`;
-        
-        tbody.innerHTML += row;
-        subtotal += total;
-        totalQty += qty;
-        calculate();
-        
-        // Clear inputs for next item
-        document.getElementById("pName").value = '';
-        document.getElementById("pSerial").value = '';
-        document.getElementById("pQty").value = '';
-        document.getElementById("pRate").value = '';
-    }
-
-    function calculate() {
-        const sgst = subtotal * 0.09;
-        const grand = Math.round(subtotal + (sgst * 2));
-
-        document.getElementById("totalQty").innerText = totalQty;
-        document.getElementById("subtotal").innerText = subtotal.toFixed(2);
-        document.getElementById("amountVal").innerText = subtotal.toFixed(2);
-        document.getElementById("sgstVal").innerText = sgst.toFixed(2);
-        document.getElementById("cgstVal").innerText = sgst.toFixed(2);
-        document.getElementById("grandVal").innerText = grand.toFixed(2);
-        document.getElementById("words").innerText = numberToWords(grand) + " RUPEES ONLY";
-    }
-
-    function numberToWords(num) {
-        const a = ['','ONE ','TWO ','THREE ','FOUR ','FIVE ','SIX ','SEVEN ','EIGHT ','NINE ','TEN ','ELEVEN ','TWELVE ','THIRTEEN ','FOURTEEN ','FIFTEEN ','SIXTEEN ','SEVENTEEN ','EIGHTEEN ','NINETEEN '];
-        const b = ['', '', 'TWENTY','THIRTY','FORTY','FIFTY','SIXTY','SEVENTY','EIGHTY','NINETY'];
-        let n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
-        if (!n) return ''; 
-        let str = '';
-        str += (n[1] != 0) ? (a[Number(n[1])] || b[n[1][0]] + ' ' + a[n[1][1]]) + 'CRORE ' : '';
-        str += (n[2] != 0) ? (a[Number(n[2])] || b[n[2][0]] + ' ' + a[n[2][1]]) + 'LAKH ' : '';
-        str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'THOUSAND ' : '';
-        str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'HUNDRED ' : '';
-        str += (n[5] != 0) ? (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) : '';
-        return str.trim();
-    }
-
-    function generatePDF() {
-        const element = document.getElementById("invoice");
-        const opt = {
-            margin: 0.2,
-            filename: 'Care365_Invoice.pdf',
-            image: { type: 'jpeg', quality: 1 },
-            html2canvas: { scale: 3, useCORS: true },
-            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-        };
-        html2pdf().set(opt).from(element).save();
-    }
-
-    // Signature Logic (Hybrid)
-    const canvas = document.getElementById("sig-canvas");
-    const ctx = canvas.getContext("2d");
-    let writing = false;
-
-    function getPos(e) {
-        const rect = canvas.getBoundingClientRect();
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        return { 
-            x: (clientX - rect.left) * (canvas.width / rect.width), 
-            y: (clientY - rect.top) * (canvas.height / rect.height) 
-        };
-    }
-
-    function start(e) { writing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); if(e.touches) e.preventDefault(); }
-    function move(e) { if(!writing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); if(e.touches) e.preventDefault(); }
-    
-    canvas.addEventListener("mousedown", start);
-    canvas.addEventListener("touchstart", start, {passive:false});
-    canvas.addEventListener("mousemove", move);
-    canvas.addEventListener("touchmove", move, {passive:false});
-    window.addEventListener("mouseup", () => writing = false);
-    window.addEventListener("touchend", () => writing = false);
-
-    function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
-</script>
+<script src="invoice-app.js"></script>
 
 </body>
 </html>
