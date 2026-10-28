@@ -28,7 +28,7 @@
     .items td { border-top: none; border-bottom: none; font-size: 13px; padding: 7px 8px; vertical-align: middle; }
     .items tr.filler td { height: 14px; }
     .total-row td { border: 1px solid #1f6fb5; font-weight: bold; }
-    .no-print-x { cursor: pointer; color: #c00; font-weight: bold; }
+    .no-print-x { border: 0; padding: 0; background: transparent; cursor: pointer; color: #c00; font: inherit; font-weight: bold; }
 
     .controls { background: #fff; padding: 20px; width: 100%; max-width: 790px; border-radius: 8px; box-sizing: border-box; font-family: Arial, sans-serif; }
     .control-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -37,6 +37,9 @@
     .btn-main { width: 100%; padding: 15px; background: #3a6ea5; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 16px; margin-top: 10px; }
     .btn-secondary { background: #666; margin-top: 5px; }
     .btn-download { background: #28a745; margin-top: 5px; }
+    .saved-estimates { margin-top: 20px; }
+    .saved-estimates select { width: 100%; padding: 12px; font-size: 16px; }
+    #storageStatus { min-height: 1.4em; font-size: 14px; }
 
     @media print {
         .controls, .no-print-x { display: none !important; }
@@ -67,7 +70,7 @@
         </tr>
         <tr>
             <td colspan="3" style="height: 70px;">
-                <div contenteditable="true" style="outline:none; font-weight:bold;">
+                <div contenteditable="true" id="customerDetails" style="outline:none; font-weight:bold;">
                     Hotel Kalinga Ashok, Kalpana Square, BBSR,<br>Odisha - 751006
                 </div>
             </td>
@@ -145,106 +148,28 @@
 </div>
 
 <div class="controls">
+    <div class="saved-estimates">
+        <label for="savedEstimates"><strong>Saved estimates</strong></label>
+        <select id="savedEstimates" disabled>
+            <option value="">Configure Firestore to load saved estimates</option>
+        </select>
+        <button class="btn-main" id="saveEstimate" type="button" disabled>Save New Estimate</button>
+        <button class="btn-main btn-secondary" id="updateEstimate" type="button" disabled>Update Selected Estimate</button>
+        <button class="btn-main btn-secondary" id="deleteEstimate" type="button" disabled>Delete Selected Estimate</button>
+        <p id="storageStatus" role="status" aria-live="polite">Firestore is not configured.</p>
+    </div>
     <div class="control-group">
         <input type="text" id="pName" placeholder="Product / Model No.">
         <input type="text" id="pSerial" placeholder="Serial No">
         <input type="number" id="pQty" placeholder="Qty">
         <input type="number" id="pRate" placeholder="Rate">
     </div>
-    <button class="btn-main" onclick="addRow()">Add Item</button>
+    <button class="btn-main" id="addItem" type="button">Add Item</button>
     <button class="btn-main btn-download" onclick="generatePDF()">Download PDF</button>
     <button class="btn-main btn-secondary" onclick="window.print()">Print</button>
     <a href="index.html"><button class="btn-main">Create Invoice</button></a>
 </div>
 
-<script>
-    // Items from the estimate dated 13.11.2025
-    let items = [
-            { name: 'TH-L32B60D Panel', serial: 'I3UBN57064', qty: 1, rate: 5500 },
-            { name: 'TH-L32B60D Backlit', serial: 'I3UBN57225', qty: 1, rate: 2500 },
-            { name: 'TH-L32B60D Panel', serial: 'I3UBN57127', qty: 1, rate: 5500 },
-            { name: 'TH-L32B60D Backlit', serial: 'I3UBN57078', qty: 1, rate: 2500 },
-            { name: 'TH-L32B60D Panel', serial: 'I3UBN57065', qty: 1, rate: 5500 },
-            { name: 'TH-L32B60D Panel', serial: 'I3UBN57034', qty: 1, rate: 5500 },
-            { name: 'TH-L32B60D Dead', serial: 'I3UBN57122', qty: 1, rate: 4500 },
-            { name: 'TH-L32B60D Dead', serial: 'I3UBN57040', qty: 1, rate: 4500 },
-            { name: 'TH-L32B60D Dead', serial: 'I3UBN57289', qty: 1, rate: 4500 },
-            { name: 'T-CON (LBDS)', serial: '', qty: 4, rate: 500 },
-            { name: 'Service Charge', serial: '', qty: 9, rate: 1000 }
-        ];
-
-    const fmt = n => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-
-    function render() {
-        const tbody = document.getElementById("tableBody");
-        let html = '', subtotal = 0, totalQty = 0;
-        items.forEach((it, i) => {
-            const total = it.qty * it.rate;
-            subtotal += total; totalQty += it.qty;
-            html += `<tr>
-                <td class="center-text">${i + 1}</td>
-                <td class="center-text">${esc(it.name)}</td>
-                <td class="center-text">${esc(it.serial)}</td>
-                <td class="center-text">${it.qty}</td>
-                <td class="center-text">${fmt(it.rate)}</td>
-                <td class="center-text">${fmt(total)} <span class="no-print-x" data-html2canvas-ignore="true" onclick="removeRow(${i})">&times;</span></td>
-            </tr>`;
-        });
-        html += '<tr class="filler"><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
-        tbody.innerHTML = html;
-
-        const sgst = subtotal * 0.09;
-        const grand = Math.round(subtotal + sgst * 2);
-        document.getElementById("totalQty").innerText = totalQty;
-        document.getElementById("subtotal").innerText = fmt(subtotal);
-        document.getElementById("amountVal").innerText = fmt(subtotal);
-        document.getElementById("sgstVal").innerText = fmt(sgst);
-        document.getElementById("cgstVal").innerText = fmt(sgst);
-        document.getElementById("grandVal").innerText = fmt(grand);
-        document.getElementById("words").innerText = (grand ? numberToWords(grand) : 'ZERO') + " RUPEES ONLY";
-    }
-
-    function addRow() {
-        const name = document.getElementById("pName").value.trim();
-        const serial = document.getElementById("pSerial").value.trim();
-        const qty = parseInt(document.getElementById("pQty").value);
-        const rate = parseFloat(document.getElementById("pRate").value);
-        if (!name || isNaN(qty) || isNaN(rate)) return alert("Please enter Product, Qty and Rate");
-        items.push({ name, serial, qty, rate });
-        ['pName','pSerial','pQty','pRate'].forEach(id => document.getElementById(id).value = '');
-        render();
-    }
-
-    function removeRow(i) { items.splice(i, 1); render(); }
-
-    function numberToWords(num) {
-        const a = ['','ONE ','TWO ','THREE ','FOUR ','FIVE ','SIX ','SEVEN ','EIGHT ','NINE ','TEN ','ELEVEN ','TWELVE ','THIRTEEN ','FOURTEEN ','FIFTEEN ','SIXTEEN ','SEVENTEEN ','EIGHTEEN ','NINETEEN '];
-        const b = ['', '', 'TWENTY','THIRTY','FORTY','FIFTY','SIXTY','SEVENTY','EIGHTY','NINETY'];
-        let n = ('000000000' + num).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
-        if (!n) return '';
-        const two = v => a[Number(v)] || (b[v[0]] + ' ' + a[v[1]]);
-        let str = '';
-        str += (n[1] != 0) ? two(n[1]) + 'CRORE ' : '';
-        str += (n[2] != 0) ? two(n[2]) + 'LAKH ' : '';
-        str += (n[3] != 0) ? two(n[3]) + 'THOUSAND ' : '';
-        str += (n[4] != 0) ? a[Number(n[4])] + 'HUNDRED ' : '';
-        str += (n[5] != 0) ? two(n[5]) : '';
-        return str.replace(/\s+/g, ' ').trim();
-    }
-
-    function generatePDF() {
-        const opt = {
-            margin: 0.2,
-            filename: 'Care365_Estimate.pdf',
-            image: { type: 'jpeg', quality: 1 },
-            html2canvas: { scale: 3, useCORS: true },
-            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-        };
-        html2pdf().set(opt).from(document.getElementById("invoice")).save();
-    }
-
-    render();
-</script>
+<script src="estimate-app.js"></script>
 </body>
 </html>
